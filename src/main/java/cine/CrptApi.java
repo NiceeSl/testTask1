@@ -35,7 +35,7 @@ public class CrptApi {
             // пытаемся очищать старые запросы из окна и делаем задержку
             while (window.size() <= maxRequests) {
                 try {
-                    Thread.sleep(windowSizeMillis / 2);
+                    window.wait(windowSizeMillis / 2);
                 } catch (InterruptedException e) {
                     logger.log(Level.WARNING, "Thread interrupted while waiting", e);
                     Thread.currentThread().interrupt();
