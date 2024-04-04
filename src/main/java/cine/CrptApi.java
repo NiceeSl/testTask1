@@ -14,12 +14,14 @@ import java.io.IOException;
 import java.util.ArrayDeque;
 import java.util.Queue;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class CrptApi {
     private final Queue<Long> window = new ArrayDeque<>();
     private final long windowSizeMillis;
     private final int maxRequests;
-    private final Object lock = new Object();
+    private final Logger logger = Logger.getLogger(CrptApi.class.getName());
 
     public CrptApi(int maxRequests, TimeUnit timeUnit, long windowSize) {
         this.maxRequests = maxRequests;
@@ -35,15 +37,16 @@ public class CrptApi {
                 try {
                     Thread.sleep(windowSizeMillis / 2);
                 } catch (InterruptedException e) {
-                    e.printStackTrace();
+                    logger.log(Level.WARNING, "Thread interrupted while waiting", e);
+                    Thread.currentThread().interrupt();
                 }
                 while (!window.isEmpty() && currentTime - window.peek() > windowSizeMillis) {
                     // Удаляем старые запросы
                     window.poll();
                     // Добавляем текущий запрос в окно
-                    window.offer(currentTime);
                 }
             }
+            window.offer(currentTime);
         }
 
         // Отправка запроса на создание документа
@@ -70,7 +73,7 @@ public class CrptApi {
                 httpClient.close();
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            logger.log(Level.SEVERE, "Failed to send HTTP request", e);
         }
     }
 
