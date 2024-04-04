@@ -28,21 +28,22 @@ public class CrptApi {
 
     public void createDocument(Document document, String signature) {
         long currentTime = System.currentTimeMillis();
-        synchronized (lock) {
-            // Удаляем старые запросы из окна
-            while (!window.isEmpty() && currentTime - window.peek() > windowSizeMillis) {
-                window.poll();
-            }
-            // Если окно заполнено, останавливаем обработку запроса
-            while (window.size() >= maxRequests) {
+        synchronized (window) {
+            // Пока размер окна превышает максимальное количество запросов,
+            // пытаемся очищать старые запросы из окна и делаем задержку
+            while (window.size() <= maxRequests) {
                 try {
-                    lock.wait(); // Ждем, пока не освободится место
+                    Thread.sleep(windowSizeMillis / 2);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
+                while (!window.isEmpty() && currentTime - window.peek() > windowSizeMillis) {
+                    // Удаляем старые запросы
+                    window.poll();
+                    // Добавляем текущий запрос в окно
+                    window.offer(currentTime);
+                }
             }
-            // Добавляем текущий запрос
-            window.offer(currentTime);
         }
 
         // Отправка запроса на создание документа
@@ -52,7 +53,7 @@ public class CrptApi {
             HttpPost request = new HttpPost(url);
             request.setHeader("Content-Type", "application/json");
 
-            // Строим JSON-объект с данными документа
+            // JSON-объект с данными документа
             ObjectMapper objectMapper = new ObjectMapper();
             ObjectNode jsonPayload = objectMapper.createObjectNode();
             jsonPayload.putPOJO("description", document);
@@ -61,11 +62,9 @@ public class CrptApi {
             StringEntity entity = new StringEntity(jsonPayload.toString(), ContentType.APPLICATION_JSON);
             request.setEntity(entity);
 
-            // Отправляем запрос
             CloseableHttpResponse response = httpClient.execute(request);
             try {
                 HttpEntity responseEntity = response.getEntity();
-                System.out.println("Response status: " + response.getStatusLine());
             } finally {
                 response.close();
                 httpClient.close();
