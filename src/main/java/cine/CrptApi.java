@@ -34,11 +34,14 @@ public class CrptApi {
                 window.poll();
             }
             // Если окно заполнено, останавливаем обработку запроса
-            if (window.size() >= maxRequests) {
-                System.out.println("Rate limit exceeded");
-                return;
+            while (window.size() >= maxRequests) {
+                try {
+                    lock.wait(); // Ждем, пока не освободится место
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
             }
-            // Добавляем текущий запрос в окно
+            // Добавляем текущий запрос
             window.offer(currentTime);
         }
 
